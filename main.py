@@ -6,16 +6,24 @@ def myrandom():
     # return float(input())
     return random.random()
 class 武將:
-    def __init__(self, 名字 = "無名"):
+    def __init__(self, 名字, 兵種名稱, 戰法名稱 = None):
         self.名字 = 名字
+        self.兵種 = 兵種.create(兵種名稱)
+        self.兵種.設定武將(self)
+        self.戰法 = None
+        if isinstance(self.兵種, 戰法將):
+            if 戰法名稱:
+                self.戰法 = 戰法.create(戰法名稱)
+            else:
+                self.戰法 = 戰法.create(self.兵種.預設戰法())
+            self.戰法.設定武將(self)
         self.中毒 = 0
         self.混亂 = False
         self.龍膽 = False
+        self.奮起 = False
         self.兵力 = 999999
         self.最大兵力 = 999999
         self.士氣 = 0
-        self.兵種 = None
-        self.戰法 = None
         self.傷害 = 0
         self.戰法傷害比例 = 1.0
     def 重置(self):
@@ -200,12 +208,17 @@ class 武將:
         if self.戰法:
             return self.戰法.混亂率()
         return self.兵種.混亂率()
+    def 兵量加成(self):
+        if self.奮起:
+            return 2 - self.兵力 / self.最大兵力
+        return 0.5 + 0.5 * self.兵力 / self.最大兵力
     def 防禦加成(self):
         return self.兵種.防禦加成()
     def 策略防禦加成(self):
         return self.兵種.策略防禦加成()
     def 基本傷害計算(self, 守方, 回合):
         傷害 = self.傷害
+        傷害 *= self.兵量加成()
         傷害 *= self.兵種.傷害加成(守方.兵種)
         傷害 *= 公式.回合係數(回合)
         if isinstance(self.兵種, 戰法將):
@@ -221,12 +234,12 @@ class 武將:
         return int(self.基本傷害計算(守方, 回合) * 守方.策略防禦加成())
 class NPC(武將):
     def __init__(self, 兵種名稱):
-        super().__init__(兵種名稱)
-        self.設定兵種(兵種名稱)
+        super().__init__(兵種名稱, 兵種名稱)
 class 兵種:
     def __init__(self):
         self.武將 = None
-        self.戰法 = None
+    def 設定武將(self, 武將):
+        self.武將 = 武將
     def create(兵種名稱):
         if 兵種名稱 == "破甲重弩":
             return 破甲重弩()
@@ -260,14 +273,14 @@ class 兵種:
             return 浮屠戰車()
         elif 兵種名稱 == "虎癡軍":
             return 虎癡軍()
+        elif 兵種名稱 == "破軍神弩":
+            return 破軍神弩()
+        elif 兵種名稱 == "咆天虎衛":
+            return 咆天虎衛()
         elif 兵種名稱 == "神電策士":
             return 神電策士()
         elif 兵種名稱 == "號天神騎":
             return 號天神騎()
-        elif 兵種名稱 == "咆天虎衛":
-            return 咆天虎衛()
-        elif 兵種名稱 == "破軍神弩":
-            return 破軍神弩()
     def 命中率(self):
         return 1
     def 抵擋率(self):
@@ -286,7 +299,9 @@ class 兵種:
         return 1
 
 class 戰法將(兵種):
-    pass
+    @abc.abstractmethod
+    def 預設戰法(self):
+        assert False, "abstract method"
 class 步兵(戰法將):
     def 抵擋率(self):
         return 0.2
@@ -299,34 +314,29 @@ class 騎兵(戰法將):
 class 機械(兵種):
     pass
 class 策士(兵種):
-    @abc.abstractmethod
-    def 行動(self, 回合, 位置, 我方部隊, 敵方部隊):
-        pass
+    pass
 class 破甲重弩(弓兵):
-    def __init__(self):
-        self.戰法 = 決勝千里()
-
+    def 預設戰法(self):
+        return "決勝千里"
 class 天機策士(策士):
     pass
-
 class 霸王近衛軍(步兵):
-    def __init__(self):
-        self.戰法 = 霸王無雙()
+    def 預設戰法(self):
+        return "霸王無雙"
     def 暴擊率(self):
         return 0.1
 class 雲翎戰車(機械):
     pass
-
 class 荊楚鐵衛(步兵):
-    def __init__(self):
-        self.戰法 = 恣意攻擊()
+    def 預設戰法(self):
+        return "恣意攻擊"
     def 暴擊率(self):
         return 0.1
     def 閃避率(self):
         return 0.1
 class 無雙飛騎(騎兵):
-    def __init__(self):
-        self.戰法 = 縱橫無雙()
+    def 預設戰法(self):
+        return "縱橫無雙"
     def 傷害加成(self, 兵種):
         if isinstance(兵種, 策士):
             return 1.5
@@ -342,21 +352,21 @@ class 鬼謀策士(策士):
             return 1.5
         return 1
 class 雙戟鐵衛(步兵):
-    def __init__(self):
-        self.戰法 = 金剛神力()
+    def 預設戰法(self):
+        return "金剛神力"
     def 防禦加成(self):
         return 0.55
     def 策略防禦加成():
         return 0.55
 class 凌雲飛矛(弓兵):
-    def __init__(self):
-        self.戰法 = 戰鬥咆哮()
+    def 預設戰法(self):
+        return "戰鬥咆哮"
     def 暴擊率(self):
         return 0.3
 
 class 冀州驍騎(騎兵):
-    def __init__(self):
-        self.戰法 = 直搗黃龍()
+    def 預設戰法(self):
+        return "直搗黃龍"
     def 傷害加成(self, 兵種):
         if isinstance(兵種, 弓兵):
             return 0.5
@@ -371,15 +381,15 @@ class 錦帆驚瀾衝(機械):
     pass
 
 class 白馬義從(騎兵):
-    def __init__(self):
-        self.戰法 = 龍膽震天()
+    def 預設戰法(self):
+        return "龍膽震天"
     def 傷害加成(self, 兵種):
         if isinstance(兵種, 騎兵):
             return 1.5
         return 1
 class 虎癡軍(步兵):
-    def __init__(self):
-        self.戰法 = 赤膊狂擊()
+    def 預設戰法(self):
+        return "赤膊狂擊"
     def 暴擊率(self):
         return 0.1
     def 傷害加成(self, 兵種):
@@ -396,20 +406,24 @@ class 神電策士(策士):
     pass
 
 class 咆天虎衛(步兵):
-    def __init__(self):
-        self.戰法 = 震天咆哮()
+    def 預設戰法(self):
+        return "震天咆哮"
     def 暴擊率(self):
         return 0.1
 
 class 破軍神弩(弓兵):
-    def __init__(self):
-        self.戰法 = 亂箭穿心()
+    def 預設戰法(self):
+        return "亂箭穿心"
 
 class 號天神騎(騎兵):
-    def __init__(self):
-        self.戰法 = 號令天下()
+    def 預設戰法(self):
+        return "號令天下"
 
 class 戰法:
+    def __init__(self):
+        self.武將 = None
+    def 設定武將(self, 武將):
+        self.武將 = 武將
     def create(戰法名稱):
         if 戰法名稱 == "決勝千里":
             return 決勝千里()
@@ -454,14 +468,18 @@ class 無限戰法(戰法):
         self.武將.士氣 = 100
     def 初始士氣(self):
         return 100
-
 class 決勝千里(無限戰法):
-    pass
+    def 無限發動(self, 回合, 位置, 我方部隊, 敵方部隊):
+        self.武將.戰法直列攻擊(回合, 位置, 敵方部隊)
 class 霸王無雙(無限戰法):
     def 無限發動(self, 回合, 位置, 我方部隊, 敵方部隊):
         self.武將.戰法單體攻擊x2(回合, 位置, 敵方部隊)
 class 恣意攻擊(無限戰法):
-    pass
+    def 設定武將(self, 武將):
+        super().設定武將(武將)
+        self.武將.奮起 = True
+    def 無限發動(self, 回合, 位置, 我方部隊, 敵方部隊):
+        self.武將.戰法單體攻擊(回合, 位置, 敵方部隊)
 class 縱橫無雙(無限戰法):
     def 無限發動(self, 回合, 位置, 我方部隊, 敵方部隊):
         self.武將.戰法每列攻擊(回合, 位置, 敵方部隊)
@@ -749,7 +767,7 @@ def my_print(str):
         print(str)
 
 """
-return value: 0: tie; 1: win; 2: lose
+return value: 0: tie; 1: win; -1: lose
 """
 def 戰鬥模擬(我方部隊, 敵方部隊):
     我方部隊.重置()
@@ -774,33 +792,36 @@ def 戰鬥模擬(我方部隊, 敵方部隊):
 
 class 設定值:
     我方兵力 = 205000
-    敵方兵力 = 193370
+    敵方兵力 = 210000
 
 def main():
-    武將們 = ["韓信", "張良", "項羽", "劉邦", "關羽", "呂布", "郭嘉", "太史慈", "典韋", "文醜", "徐庶", "甘寧", "趙雲", "周瑜", "張遼", "許褚", "司馬懿", "黃忠", "張飛", "諸葛亮", "曹操"]
+    武將們 = {
+        "韓信":"破甲重弩", "張良":"天機策士", "項羽":"霸王近衛軍", "劉邦":"雲翎戰車",
+        "關羽":"荊楚鐵衛", "呂布":"無雙飛騎", "郭嘉":"鬼謀策士", "太史慈":"凌雲飛矛",
+        "典韋":"雙戟鐵衛", "文醜":"冀州驍騎", "徐庶":"破陣俠士", "甘寧":"錦帆驚瀾衝",
+        "趙雲":"白馬義從", "周瑜":"火靈策士", "張遼":"浮屠戰車", "許褚":"虎癡軍",
+        "司馬懿":"神電策士", "黃忠":"破軍神弩", "張飛":"咆天虎衛", "諸葛亮":"神電策士",
+        "曹操":"號天神騎"}
     武將列表 = {}
-    for 武將名字 in 武將們:
-        武將列表[武將名字] = 武將(武將名字)
+    for (武將名字, 兵種名稱) in 武將們.items():
+        武將列表[武將名字] = 武將(武將名字, 兵種名稱)
     趙雲 = 武將列表["趙雲"]
     太史慈 = 武將列表["太史慈"]
     典韋 = 武將列表["典韋"]
     項羽 = 武將列表["項羽"]
     許褚 = 武將列表["許褚"]
     張飛 = 武將列表["張飛"]
+    關羽 = 武將列表["關羽"]
 
-    太史慈.設定兵種("凌雲飛矛")
     太史慈.設定傷害(70000)
     太史慈.設定戰法傷害比例(0.6)
-    趙雲.設定兵種("白馬義從")
     趙雲.設定傷害(65000)
-    典韋.設定兵種("雙戟鐵衛")
     典韋.設定傷害(70000)
-    項羽.設定兵種("霸王近衛軍")
     項羽.設定傷害(50000)
-    許褚.設定兵種("虎癡軍")
     許褚.設定傷害(67000)
-    張飛.設定兵種("咆天虎衛")
     張飛.設定傷害(55000)
+    關羽.設定傷害(50000)
+
     我方出戰武將 = [太史慈, 趙雲, 張飛, 許褚, 典韋]
     for 所有武將 in 我方出戰武將:
         所有武將.設定兵力(設定值.我方兵力)
@@ -816,13 +837,29 @@ def main():
     凌雲飛矛.設定傷害(50000)
     無雙飛騎 = NPC("無雙飛騎")
     無雙飛騎.設定傷害(50000)
-    敵方出戰武將 = [鬼謀策士, 霸王近衛軍, 白馬義從, 凌雲飛矛, 無雙飛騎]
+    無雙飛騎2 = NPC("無雙飛騎")
+    無雙飛騎2.設定傷害(50000)
+    無雙飛騎3 = NPC("無雙飛騎")
+    無雙飛騎3.設定傷害(50000)
+    咆天虎衛 = NPC("咆天虎衛")
+    咆天虎衛.設定傷害(50000)
+    咆天虎衛2 = NPC("咆天虎衛")
+    咆天虎衛2.設定傷害(50000)
+    前鋒一268 = [鬼謀策士, 霸王近衛軍, 白馬義從, 凌雲飛矛, 無雙飛騎] # 七星
+    前鋒二268 = [無雙飛騎, 無雙飛騎2, 無雙飛騎3, 咆天虎衛, 咆天虎衛2] # 錐型
+    敵方出戰武將 = 前鋒二268
     for 所有敵將 in 敵方出戰武將:
         所有敵將.設定兵力(設定值.敵方兵力)
 
-    我方 = 部隊("雁型陣", 我方出戰武將)
-    敵方 = 部隊("七星陣", 敵方出戰武將)
-    戰鬥模擬(我方, 敵方)
+    我方 = 部隊("鋒矢陣", [趙雲, 關羽, 典韋, 太史慈, 許褚])
+    敵方 = 部隊("錐型陣", 敵方出戰武將)
+    結果 = 戰鬥模擬(我方, 敵方)
+    if 結果 > 0:
+        my_print("勝利!")
+    elif 結果 < 0:
+        my_print("失敗!")
+    else:
+        my_print("平局!")
     return
     win = 0
     lose = 0
